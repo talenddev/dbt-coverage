@@ -4,6 +4,8 @@ import io
 import json
 import logging
 import textwrap
+import time
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from pathlib import Path
@@ -35,6 +37,7 @@ class CoverageType(Enum):
 class OutputFormat(str, Enum):
     STRING_TABLE = "string"
     MARKDOWN_TABLE = "markdown"
+    XML = "xml"
 
 
 @dataclass
@@ -583,6 +586,85 @@ class CoverageReport:
     def to_json(self):
         return json.dumps(self.to_dict(), indent=2)
 
+    def to_xml(self, source_path: str = ".") -> str:
+        """
+        Generate a Cobertura-compatible XML coverage report.
+
+        Args:
+            source_path: The source directory path to include in the XML report.
+
+        Returns:
+            XML string in Cobertura format.
+        """
+        if self.entity_type != CoverageReport.EntityType.CATALOG:
+            raise TypeError(
+                f"to_xml method only supports CATALOG entity type, got {self.entity_type}"
+            )
+
+        # Create root coverage element
+        coverage = ET.Element("coverage")
+        coverage.set("line-rate", f"{self.coverage:.4f}" if self.coverage is not None else "0.0000")
+        coverage.set("branch-rate", "0.0000")  # dbt-coverage doesn't track branch coverage
+        coverage.set("lines-covered", str(len(self.covered)))
+        coverage.set("lines-valid", str(len(self.total)))
+        coverage.set("branches-covered", "0")
+        coverage.set("branches-valid", "0")
+        coverage.set("complexity", "0")
+        coverage.set("timestamp", str(int(time.time())))
+        coverage.set("version", "dbt-coverage-0.4.1")
+
+        # Add sources section
+        sources = ET.SubElement(coverage, "sources")
+        source = ET.SubElement(sources, "source")
+        source.text = source_path
+
+        # Add packages section
+        packages = ET.SubElement(coverage, "packages")
+        package = ET.SubElement(packages, "package")
+        package.set("name", "dbt_models")
+        package.set("line-rate", f"{self.coverage:.4f}" if self.coverage is not None else "0.0000")
+        package.set("branch-rate", "0.0000")
+        package.set("complexity", "0")
+
+        # Add classes (tables) section
+        classes = ET.SubElement(package, "classes")
+
+        # Sort tables for consistent output
+        for table_name, table_report in sorted(self.subentities.items()):
+            class_elem = ET.SubElement(classes, "class")
+            class_elem.set("name", table_name)
+            class_elem.set("filename", table_report.entity_name)
+            class_elem.set("line-rate",
+                          f"{table_report.coverage:.4f}" if table_report.coverage is not None else "0.0000")
+            class_elem.set("branch-rate", "0.0000")
+            class_elem.set("complexity", "0")
+
+            # Add empty methods element (required by Cobertura format)
+            ET.SubElement(class_elem, "methods")
+
+            # Add lines section
+            lines = ET.SubElement(class_elem, "lines")
+
+            # For unit tests, we treat the table as a single "line"
+            if self.cov_type == CoverageType.UNIT_TEST:
+                line = ET.SubElement(lines, "line")
+                line.set("number", "1")
+                line.set("hits", str(table_report.hits))
+            else:
+                # For doc/test coverage, each column is a line
+                for line_num, (_, col_report) in enumerate(
+                    sorted(table_report.subentities.items()), start=1
+                ):
+                    line = ET.SubElement(lines, "line")
+                    line.set("number", str(line_num))
+                    line.set("hits", str(col_report.hits))
+
+        # Convert to string with pretty formatting
+        xml_str = ET.tostring(coverage, encoding="unicode")
+
+        # Add XML declaration and format
+        return f'<?xml version="1.0" ?>\n<!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">\n{xml_str}'
+
 
 @dataclass
 class CoverageDiff:
@@ -1013,6 +1095,8 @@ def do_compute(
 
     if output_format == OutputFormat.MARKDOWN_TABLE:
         print(coverage_report.to_markdown_table())
+    elif output_format == OutputFormat.XML:
+        print(coverage_report.to_xml(str(project_dir.resolve())))
     else:
         print(coverage_report.to_formatted_string())
 
@@ -1076,7 +1160,7 @@ def compute(
     ),
     output_format: OutputFormat = typer.Option(
         OutputFormat.STRING_TABLE,
-        help="The output format to print, either `string` or `markdown`",
+        help="The output format to print: `string`, `markdown`, or `xml`",
     ),
 ):
     """Compute coverage for project in PROJECT_DIR from catalog.json and manifest.json."""
@@ -1102,7 +1186,7 @@ def compare(
     ),
     output_format: OutputFormat = typer.Option(
         OutputFormat.STRING_TABLE,
-        help="The output format to print, either `string` or `markdown`",
+        help="The output format to print: `string`, `markdown`, or `xml`",
     ),
 ):
     """Compare two coverage reports generated by the compute command."""
