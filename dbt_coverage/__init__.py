@@ -76,12 +76,14 @@ class Table:
         unique_id = node["unique_id"]
         manifest_table = manifest.get_table(unique_id)
         if manifest_table is None:
-            raise ValueError(f"Unique ID {unique_id} not found in manifest.json")
+            raise ValueError(
+                f"Unique ID {unique_id} not found in manifest.json")
         columns = [Column.from_node(col) for col in node["columns"].values()]
         original_file_path = manifest_table["original_file_path"]
 
         if original_file_path is None:
-            logging.warning("original_file_path value not found in manifest for %s", unique_id)
+            logging.warning(
+                "original_file_path value not found in manifest for %s", unique_id)
 
         return Table(
             unique_id,
@@ -144,7 +146,8 @@ class Catalog:
             }
 
         logging.info(
-            "Successfully filtered tables. Total tables post-filtering: %d tables", len(tables)
+            "Successfully filtered tables. Total tables post-filtering: %d tables", len(
+                tables)
         )
 
         return Catalog(tables=tables)
@@ -183,7 +186,8 @@ class Manifest:
             for table in sources
         }
 
-        models = [table for table in manifest_nodes.values() if table["resource_type"] == "model"]
+        models = [table for table in manifest_nodes.values(
+        ) if table["resource_type"] == "model"]
         models = {
             table["unique_id"]: {
                 "columns": cls._normalize_column_names(table["columns"]),
@@ -193,7 +197,8 @@ class Manifest:
             for table in models
         }
 
-        seeds = [table for table in manifest_nodes.values() if table["resource_type"] == "seed"]
+        seeds = [table for table in manifest_nodes.values(
+        ) if table["resource_type"] == "seed"]
         seeds = {
             table["unique_id"]: {
                 "columns": cls._normalize_column_names(table["columns"]),
@@ -358,7 +363,8 @@ class CoverageReport:
 
     def __post_init__(self):
         self.misses = self.total - self.covered
-        self.coverage = len(self.covered) / len(self.total) if self.total else None
+        self.coverage = len(self.covered) / \
+            len(self.total) if self.total else None
 
     @classmethod
     def from_catalog(cls, catalog: Catalog, cov_type: CoverageType):
@@ -366,9 +372,11 @@ class CoverageReport:
             table.name: CoverageReport.from_table(table, cov_type)
             for table in catalog.tables.values()
         }
-        covered = set(col for table_report in subentities.values() for col in table_report.covered)
+        covered = set(col for table_report in subentities.values()
+                      for col in table_report.covered)
         hits = sum(table_report.hits for table_report in subentities.values())
-        total = set(col for table_report in subentities.values() for col in table_report.total)
+        total = set(col for table_report in subentities.values()
+                    for col in table_report.total)
 
         return CoverageReport(
             cls.EntityType.CATALOG, cov_type, None, hits, covered, total, subentities
@@ -411,7 +419,8 @@ class CoverageReport:
         elif cov_type == CoverageType.TEST:
             hits = column.tests
         elif cov_type == CoverageType.UNIT_TEST:
-            raise ValueError("Unit test coverage is not supported at column level")
+            raise ValueError(
+                "Unit test coverage is not supported at column level")
         else:
             raise ValueError(f"Unsupported cov_type {cov_type}")
 
@@ -441,7 +450,8 @@ class CoverageReport:
             total_coverage = f"{len(self.covered):5}/{len(self.total):<5}"
             if self.cov_type in (CoverageType.TEST, CoverageType.UNIT_TEST):
                 total_coverage = f"({self.hits} tests) {total_coverage}"
-            buf.write(f"| {'Total':70} | {total_coverage} | {self.coverage * 100:5.1f}% |\n")
+            buf.write(
+                f"| {'Total':70} | {total_coverage} | {self.coverage * 100:5.1f}% |\n")
 
             return buf.getvalue()
         else:
@@ -461,7 +471,8 @@ class CoverageReport:
 
             buf.write(f"Coverage report ({self.cov_type.value})\n")
             separator_width = (
-                82 if self.cov_type in (CoverageType.TEST, CoverageType.UNIT_TEST) else 69
+                82 if self.cov_type in (
+                    CoverageType.TEST, CoverageType.UNIT_TEST) else 69
             )
             buf.write("=" * separator_width + "\n")
             for _, table_cov in sorted(self.subentities.items()):
@@ -470,8 +481,10 @@ class CoverageReport:
 
             total_coverage = f"{len(self.covered):5}/{len(self.total):<5}"
             if self.cov_type in (CoverageType.TEST, CoverageType.UNIT_TEST):
-                total_coverage = f"{f'({self.hits} tests)':>12} {total_coverage}"
-            buf.write(f"{'Total':50} {total_coverage} {self.coverage * 100:5.1f}%\n")
+                total_coverage = f"{f'({self.hits} tests)':>12} {
+                    total_coverage}"
+            buf.write(
+                f"{'Total':50} {total_coverage} {self.coverage * 100:5.1f}%\n")
 
             return buf.getvalue()
         else:
@@ -516,7 +529,8 @@ class CoverageReport:
     def from_dict(report, cov_type: CoverageType):
         if "tables" in report:
             subentities = {
-                table_report["name"]: CoverageReport.from_dict(table_report, cov_type)
+                table_report["name"]: CoverageReport.from_dict(
+                    table_report, cov_type)
                 for table_report in report["tables"]
             }
             return CoverageReport(
@@ -524,7 +538,8 @@ class CoverageReport:
                 cov_type,
                 None,
                 sum(tbl.hits for tbl in subentities.values()),
-                set(col for tbl in subentities.values() for col in tbl.covered),
+                set(col for tbl in subentities.values()
+                    for col in tbl.covered),
                 set(col for tbl in subentities.values() for col in tbl.total),
                 subentities,
             )
@@ -548,7 +563,8 @@ class CoverageReport:
                 )
 
             subentities = {
-                col_report["name"]: CoverageReport.from_dict(col_report, cov_type)
+                col_report["name"]: CoverageReport.from_dict(
+                    col_report, cov_type)
                 for col_report in report["columns"]
             }
             return CoverageReport(
@@ -603,8 +619,10 @@ class CoverageReport:
 
         # Create root coverage element
         coverage = ET.Element("coverage")
-        coverage.set("line-rate", f"{self.coverage:.4f}" if self.coverage is not None else "0.0000")
-        coverage.set("branch-rate", "0.0000")  # dbt-coverage doesn't track branch coverage
+        coverage.set(
+            "line-rate", f"{self.coverage:.4f}" if self.coverage is not None else "0.0000")
+        # dbt-coverage doesn't track branch coverage
+        coverage.set("branch-rate", "0.0000")
         coverage.set("lines-covered", str(len(self.covered)))
         coverage.set("lines-valid", str(len(self.total)))
         coverage.set("branches-covered", "0")
@@ -622,7 +640,8 @@ class CoverageReport:
         packages = ET.SubElement(coverage, "packages")
         package = ET.SubElement(packages, "package")
         package.set("name", "dbt_models")
-        package.set("line-rate", f"{self.coverage:.4f}" if self.coverage is not None else "0.0000")
+        package.set(
+            "line-rate", f"{self.coverage:.4f}" if self.coverage is not None else "0.0000")
         package.set("branch-rate", "0.0000")
         package.set("complexity", "0")
 
@@ -635,7 +654,7 @@ class CoverageReport:
             class_elem.set("name", table_name)
             class_elem.set("filename", table_report.entity_name)
             class_elem.set("line-rate",
-                          f"{table_report.coverage:.4f}" if table_report.coverage is not None else "0.0000")
+                           f"{table_report.coverage:.4f}" if table_report.coverage is not None else "0.0000")
             class_elem.set("branch-rate", "0.0000")
             class_elem.set("complexity", "0")
 
@@ -696,7 +715,8 @@ class CoverageDiff:
         ):  # Unit tests work on the table level
             return None
 
-        new_misses = self.after.misses - (self.before.misses if self.before is not None else set())
+        new_misses = self.after.misses - \
+            (self.before.misses if self.before is not None else set())
 
         res: Dict[str, CoverageDiff] = {}
         for new_miss in new_misses:
@@ -711,7 +731,8 @@ class CoverageDiff:
                 else None
             )
             after_entity = self.after.subentities[new_misses_entity_name]
-            res[new_misses_entity_name] = CoverageDiff(before_entity, after_entity)
+            res[new_misses_entity_name] = CoverageDiff(
+                before_entity, after_entity)
 
         return res
 
@@ -873,8 +894,10 @@ class CoverageDiff:
         )
         title = title_prefix + title
 
-        before_covered = len(self.before.covered) if self.before is not None else "-"
-        before_total = len(self.before.total) if self.before is not None else "-"
+        before_covered = len(
+            self.before.covered) if self.before is not None else "-"
+        before_total = len(
+            self.before.total) if self.before is not None else "-"
         before_coverage = (
             f"({self.before.coverage:.2%})"
             if self.before is not None and self.before.coverage is not None
@@ -899,9 +922,11 @@ class CoverageDiff:
             )
         elif output_format == OutputFormat.STRING_TABLE:
             buf.write(f"{title:50}")
-            buf.write(f"{before_covered:>5}/{before_total:<5}{before_coverage:^9}")
+            buf.write(
+                f"{before_covered:>5}/{before_total:<5}{before_coverage:^9}")
             buf.write(" -> ")
-            buf.write(f"{after_covered:>5}/{after_total:<5}{after_coverage:^9}\n")
+            buf.write(
+                f"{after_covered:>5}/{after_total:<5}{after_coverage:^9}\n")
         else:
             raise ValueError(f"Unsupported output_format: {output_format}")
 
@@ -938,10 +963,12 @@ def load_catalog(project_dir: Path, run_artifacts_dir: Path, manifest: Manifest)
 
     catalog_nodes = {**catalog_json["sources"], **catalog_json["nodes"]}
     # Filter out tables storing test failures: https://github.com/slidoapp/dbt-coverage/issues/62
-    catalog_nodes = {n_id: n for n_id, n in catalog_nodes.items() if not n_id.startswith("test.")}
+    catalog_nodes = {n_id: n for n_id,
+                     n in catalog_nodes.items() if not n_id.startswith("test.")}
     catalog = Catalog.from_nodes(catalog_nodes.values(), manifest)
 
-    logging.info("Successfully loaded %d tables from catalog", len(catalog.tables))
+    logging.info("Successfully loaded %d tables from catalog",
+                 len(catalog.tables))
 
     return catalog
 
@@ -976,9 +1003,11 @@ def load_manifest(project_dir: Path, run_artifacts_dir: Path) -> Manifest:
 
 def load_files(project_dir: Path, run_artifacts_dir: Path) -> Catalog:
     if run_artifacts_dir is None:
-        logging.info("Loading catalog and manifest files from project dir: %s", project_dir)
+        logging.info(
+            "Loading catalog and manifest files from project dir: %s", project_dir)
     else:
-        logging.info("Loading catalog and manifest files from custom dir: %s", run_artifacts_dir)
+        logging.info(
+            "Loading catalog and manifest files from custom dir: %s", run_artifacts_dir)
 
     manifest = load_manifest(project_dir, run_artifacts_dir)
     catalog = load_catalog(project_dir, run_artifacts_dir, manifest)
@@ -988,16 +1017,22 @@ def load_files(project_dir: Path, run_artifacts_dir: Path) -> Catalog:
         manifest_source_table = manifest.sources.get(table_id, {"columns": {}})
         manifest_model_table = manifest.models.get(table_id, {"columns": {}})
         manifest_seed_table = manifest.seeds.get(table_id, {"columns": {}})
-        manifest_snapshot_table = manifest.snapshots.get(table_id, {"columns": {}})
+        manifest_snapshot_table = manifest.snapshots.get(
+            table_id, {"columns": {}})
         manifest_table_tests = manifest.tests.get(table_id, {})
 
         catalog_table.unit_tests = manifest.unit_tests.get(table_id, [])
         for catalog_column in catalog_table.columns.values():
-            manifest_source_column = manifest_source_table["columns"].get(catalog_column.name)
-            manifest_model_column = manifest_model_table["columns"].get(catalog_column.name)
-            manifest_seed_column = manifest_seed_table["columns"].get(catalog_column.name)
-            manifest_snapshot_column = manifest_snapshot_table["columns"].get(catalog_column.name)
-            manifest_column_tests = manifest_table_tests.get(catalog_column.name)
+            manifest_source_column = manifest_source_table["columns"].get(
+                catalog_column.name)
+            manifest_model_column = manifest_model_table["columns"].get(
+                catalog_column.name)
+            manifest_seed_column = manifest_seed_table["columns"].get(
+                catalog_column.name)
+            manifest_snapshot_column = manifest_snapshot_table["columns"].get(
+                catalog_column.name)
+            manifest_column_tests = manifest_table_tests.get(
+                catalog_column.name)
 
             manifest_column = (
                 manifest_source_column
@@ -1039,10 +1074,14 @@ def read_coverage_report(path: Path):
     return report
 
 
-def write_coverage_report(coverage_report: CoverageReport, path: Path):
+def write_coverage_report(coverage_report: CoverageReport, path: Path, output_format: OutputFormat = OutputFormat.STRING_TABLE):
     logging.info("Writing coverage report to %s", path)
+
     with open(path, "w") as f:
-        f.write(coverage_report.to_json())
+        if output_format == OutputFormat.XML:
+            f.write(coverage_report.to_xml())
+        else:
+            f.write(coverage_report.to_json())
     logging.info("Report successfully written to %s", path)
 
 
@@ -1084,7 +1123,8 @@ def do_compute(
 
     catalog = load_files(project_dir, run_artifacts_dir)
     if model_path_filter or model_path_exclusion_filter:
-        catalog = catalog.filter_tables(model_path_filter, model_path_exclusion_filter)
+        catalog = catalog.filter_tables(
+            model_path_filter, model_path_exclusion_filter)
         if not catalog.tables:
             raise ValueError(
                 "After filtering, the Catalog contains no tables. Ensure your model_path_filter "
@@ -1100,7 +1140,7 @@ def do_compute(
     else:
         print(coverage_report.to_formatted_string())
 
-    write_coverage_report(coverage_report, cov_report)
+    write_coverage_report(coverage_report, cov_report, output_format)
 
     if cov_fail_under is not None:
         fail_under(coverage_report, cov_fail_under)
@@ -1142,8 +1182,10 @@ def compute(
     run_artifacts_dir: Path = typer.Option(
         None, help="Custom directory path for catalog and manifest files"
     ),
-    cov_report: Path = typer.Option("coverage.json", help="Output coverage report path."),
-    cov_type: CoverageType = typer.Argument(..., help="Type of coverage to compute."),
+    cov_report: Path = typer.Option(
+        "coverage.json", help="Output coverage report path."),
+    cov_type: CoverageType = typer.Argument(...,
+                                            help="Type of coverage to compute."),
     cov_fail_under: float = typer.Option(
         None, help="Fail if coverage is lower than provided threshold."
     ),
@@ -1161,6 +1203,9 @@ def compute(
     output_format: OutputFormat = typer.Option(
         OutputFormat.STRING_TABLE,
         help="The output format to print: `string`, `markdown`, or `xml`",
+    ),
+    output_file: Path = typer.Option(
+        None, help="Path to store the report"
     ),
 ):
     """Compute coverage for project in PROJECT_DIR from catalog.json and manifest.json."""
@@ -1180,7 +1225,8 @@ def compute(
 
 @app.command()
 def compare(
-    report: Path = typer.Argument(..., help="Path to coverage report - the after state."),
+    report: Path = typer.Argument(...,
+                                  help="Path to coverage report - the after state."),
     compare_report: Path = typer.Argument(
         ..., help="Path to another coverage report to compare with - the before state."
     ),
