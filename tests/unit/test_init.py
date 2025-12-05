@@ -130,16 +130,3 @@ def test_empty_catalog_xml():
     assert '<?xml version="1.0" ?>' in xml_output
     assert "coverage" in xml_output
     print("✓ Empty catalog XML output looks valid")
-
-
-if __name__ == "__main__":
-    try:
-        test_doc_coverage_xml()
-        test_test_coverage_xml()
-        test_empty_catalog_xml()
-        print("\n✅ All tests passed!")
-    except Exception as e:
-        print(f"\n❌ Test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        exit(1)
