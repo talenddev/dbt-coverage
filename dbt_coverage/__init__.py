@@ -1203,10 +1203,7 @@ def compute(
     output_format: OutputFormat = typer.Option(
         OutputFormat.STRING_TABLE,
         help="The output format to print: `string`, `markdown`, or `xml`",
-    ),
-    output_file: Path = typer.Option(
-        None, help="Path to store the report"
-    ),
+    )
 ):
     """Compute coverage for project in PROJECT_DIR from catalog.json and manifest.json."""
 
